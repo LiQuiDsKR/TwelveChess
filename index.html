@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>십이장기 멀티플레이어 게임 - 접속</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 1rem;
+        }
+        input, button {
+            display: block;
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>십이장기 멀티플레이어 게임</h1>
+        <input type="text" id="nickname" placeholder="닉네임을 입력하세요" required>
+        <button id="connect-btn">게임 접속</button>
+    </div>
+
+    <script>
+        const connectBtn = document.getElementById('connect-btn');
+        const nicknameInput = document.getElementById('nickname');
+
+        connectBtn.addEventListener('click', () => {
+            const nickname = nicknameInput.value.trim();
+            if (nickname) {
+                // 닉네임을 로컬 스토리지에 저장
+                localStorage.setItem('playerNickname', nickname);
+                // game.html로 이동
+                window.location.href = 'game.html';
+            } else {
+                alert('닉네임을 입력해주세요.');
+            }
+        });
+    </script>
+</body>
+</html>
