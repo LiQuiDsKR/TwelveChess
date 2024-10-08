@@ -128,20 +128,25 @@ socket.addEventListener('message', async (event) => {
         statusElement.textContent = `게임 시작! 상대방: ${data.opponent}`;
         playerNumber = data.player;
         document.getElementById('player-number').textContent = playerNumber === 'upper' ? '위' : '아래';
-        if (playerNumber === 'upper') {
-            // 게임 보드를 180도 회전
-            board.style.transform = 'rotate(180deg)';
-            Array.from(board.children).forEach(cell => {
-                cell.style.transform = 'rotate(180deg)';
-            });
-        }
         initializeBoard();
+        if (playerNumber === 'upper') {
+            rotateBoard();
+        }
     } else if (data.type === 'move') {
         handleRemoteMove(data.move);
     } else if (data.type === 'place') {
         handleRemotePlace(data.place);
     }
 });
+
+function rotateBoard() {
+    board.style.transform = 'rotate(180deg)';
+    Array.from(board.children).forEach(cell => {
+        cell.style.transform = 'rotate(180deg)';
+    });
+    document.getElementById('upper-captured').style.order = '2';
+    document.getElementById('lower-captured').style.order = '1';
+}
 
 function handleCellClick(event) {
     if (gameEnded || currentPlayer !== playerNumber) return;
@@ -231,7 +236,7 @@ function movePiece(fromCell, to) {
             // 게임이 끝났으므로 더 이상의 턴 변경 메시지를 표시하지 않음
         } else {
             currentPlayer = currentPlayer === 'upper' ? 'lower' : 'upper';
-            message.textContent = `${currentPlayer === playerNumber ? '당신' : '상대방'}의 차례입니다.`;
+            updateTurnMessage();
         }
     }
 }
@@ -278,7 +283,7 @@ function placePiece(piece, row, col) {
     
     updateBoard();
     currentPlayer = currentPlayer === 'upper' ? 'lower' : 'upper';
-    message.textContent = `${currentPlayer === playerNumber ? '당신' : '상대방'}의 차례입니다.`;
+    updateTurnMessage();
 }
 
 function handleCapturedPieceClick(event) {
@@ -343,7 +348,7 @@ function restartGame() {
 
     // UI 초기화
     updateBoard();
-    message.textContent = '아래 플레이어부터 시작합니다.';
+    updateTurnMessage();
     if (resultModal) {
         resultModal.style.display = 'none';
     }
@@ -355,7 +360,7 @@ restartButton.addEventListener('click', restartGame);
 
 // 초기 게임 설정
 initializeBoard();
-message.textContent = '아래 플레이어부터 시작합니다.';
+updateTurnMessage();
 
 window.addEventListener('click', function(event) {
     if (event.target == resultModal) {
@@ -374,4 +379,13 @@ function handleRemoteMove(move) {
 
 function handleRemotePlace(place) {
     placePiece(place.piece, place.row, place.col);
+}
+
+function updateTurnMessage() {
+    const messageElement = document.getElementById('message');
+    if (currentPlayer === playerNumber) {
+        messageElement.textContent = '당신의 차례입니다.';
+    } else {
+        messageElement.textContent = '상대방의 차례입니다.';
+    }
 }
