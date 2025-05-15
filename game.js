@@ -85,7 +85,6 @@ const initialOwners = [
 async function initializeGame() {
   const boardSnap = await get(boardRef);
 
-  // 오직 player1만 초기화
   if (!boardSnap.exists() && mySlot === "player1") {
     await set(boardRef, initialBoard);
     await set(ownersRef, initialOwners);
@@ -97,13 +96,32 @@ async function initializeGame() {
     await remove(kingStatusRef);
   }
 
+  // DOM에 셀을 먼저 그리고 → 이후 상태 watch 시작
   renderBoard();
-  watchTurn();
-  watchBoard();
-  watchCaptured();
-  watchKingStatus();
+
+  // Firebase 데이터 로드가 완전히 끝난 다음에만 watch 시작
+  waitForReadyData().then(() => {
+    watchTurn();
+    watchBoard();
+    watchCaptured();
+    watchKingStatus();
+  });
 }
 
+function waitForReadyData() {
+  return new Promise(resolve => {
+    const check = async () => {
+      const snap1 = await get(boardRef);
+      const snap2 = await get(ownersRef);
+      if (snap1.exists() && snap2.exists()) {
+        resolve();
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
+  });
+}
 
 function renderBoard() {
   boardElement.innerHTML = "";
@@ -158,6 +176,8 @@ function watchKingStatus() {
 
 function updateBoardDisplay() {
   if (!boardState || !ownerState) return;
+  if (!Array.isArray(boardState) || boardState.length !== 4 || boardState[0].length !== 3) return;
+
   const cells = document.querySelectorAll(".cell");
   cells.forEach(cell => {
     const row = parseInt(cell.dataset.row);
@@ -171,6 +191,7 @@ function updateBoardDisplay() {
     else if (owner === opponentSlot) cell.classList.add("upper");
   });
 }
+
 
 function updateCapturedUI() {
   const mine = capturedState[mySlot] || [];
