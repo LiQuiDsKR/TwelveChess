@@ -237,71 +237,70 @@ function isValidMove(piece, fromRow, fromCol, toRow, toCol, slot) {
 }
 
 
-function handleCellClick(e) {
+async function handleCellClick(e) {
   const row = parseInt(e.target.dataset.row);
   const col = parseInt(e.target.dataset.col);
   if (currentTurn !== mySlot) return;
 
-  const piece = (boardState[row] && boardState[row][col]) || "";
-  const owner = (ownerState[row] && ownerState[row][col]) || "";
+  const targetPiece = (boardState[row] && boardState[row][col]) || "";
+  const targetOwner = (ownerState[row] && ownerState[row][col]) || "";
 
-  // 셀 선택 해제
+  // 선택 해제
   if (selectedCell && selectedCell === e.target) {
     selectedCell.classList.remove("selected");
     selectedCell = null;
     return;
   }
 
-  // 선택 중이 아닐 때 (기물 선택)
+  // 기물 선택
   if (!selectedCell) {
-    if (piece && owner === mySlot) {
+    if (targetPiece && targetOwner === mySlot) {
       selectedCell = e.target;
       selectedCell.classList.add("selected");
     }
     return;
   }
 
-  // 이미 선택된 기물이 있을 때 (이동 시도)
+  // 기물 이동 시도
   const fromRow = parseInt(selectedCell.dataset.row);
   const fromCol = parseInt(selectedCell.dataset.col);
   const movingPiece = boardState[fromRow][fromCol];
-  const movingOwner = ownerState[fromRow][fromCol];
 
-  // 이동 유효성 체크
-  if (!isValidMove(movingPiece, fromRow, fromCol, row, col, mySlot)) {
+  const isValid = isValidMove(movingPiece, fromRow, fromCol, row, col, mySlot);
+  if (!isValid) {
     selectedCell.classList.remove("selected");
     selectedCell = null;
     return;
   }
 
-  // 내 기물이 있으면 취소
-  if (owner === mySlot) {
+  // 내 기물 자리에 이동 불가
+  if (targetOwner === mySlot) {
     selectedCell.classList.remove("selected");
     selectedCell = null;
     return;
   }
 
-  // 승급 처리 (子 → 侯)
+  // 승급 (子 → 侯)
   const isUpper = mySlot === "player1";
   const isAtEnd = (isUpper && row === 3) || (!isUpper && row === 0);
   const placedPiece = (movingPiece === "子" && isAtEnd) ? "侯" : movingPiece;
 
-  // 캡처 처리
-  if (piece !== "" && owner === opponentSlot) {
-    capturedState[mySlot].push(piece);
-    update(capturedRef, { [mySlot]: capturedState[mySlot] });
+  // 캡처 처리 (상대 기물일 경우만)
+  if (targetPiece !== "" && targetOwner === opponentSlot) {
+    capturedState[mySlot].push(targetPiece);
+    await update(capturedRef, { [mySlot]: capturedState[mySlot] });
   }
 
-  // 이동 처리
+  // 보드 상태 갱신
   boardState[row][col] = placedPiece;
   ownerState[row][col] = mySlot;
   boardState[fromRow][fromCol] = "";
   ownerState[fromRow][fromCol] = "";
 
-  set(boardRef, boardState);
-  set(ownersRef, ownerState);
-  set(turnRef, opponentSlot);
-  checkWinCondition();
+  await set(boardRef, boardState);
+  await set(ownersRef, ownerState);
+  await set(turnRef, opponentSlot);
+  await checkWinCondition();
 
   selectedCell.classList.remove("selected");
   selectedCell = null;
