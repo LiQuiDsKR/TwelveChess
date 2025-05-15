@@ -1,3 +1,5 @@
+// game.js - Firebase 기반 십이장기 실시간 멀티플레이 최종 버전
+
 import { db, ref, set, update, onValue, get, remove } from "./firebase-config.js";
 
 const nickname = localStorage.getItem("nickname") || "익명";
@@ -59,7 +61,7 @@ function listenForOpponent() {
     const players = snapshot.val();
     if (players && players[opponentSlot]) {
       opponentNameDisplay.textContent = players[opponentSlot].nickname;
-      message.textContent = "상대가 입장했습니다. 게임 준비 중...";
+      message.textContent = `상대가 입장했습니다. (${mySlot} 역할)`;
       initializeGame();
     } else {
       opponentNameDisplay.textContent = "(입장 대기 중)";
@@ -89,17 +91,12 @@ async function initializeGame() {
     await set(boardRef, initialBoard);
     await set(ownersRef, initialOwners);
     await set(turnRef, "player1");
-    await set(capturedRef, {
-      player1: [],
-      player2: []
-    });
+    await set(capturedRef, { player1: [], player2: [] });
     await remove(kingStatusRef);
   }
 
-  // DOM에 셀을 먼저 그리고 → 이후 상태 watch 시작
   renderBoard();
 
-  // Firebase 데이터 로드가 완전히 끝난 다음에만 watch 시작
   waitForReadyData().then(() => {
     watchTurn();
     watchBoard();
@@ -178,17 +175,14 @@ function updateBoardDisplay() {
   if (!Array.isArray(boardState) || !Array.isArray(ownerState)) return;
 
   const cells = document.querySelectorAll(".cell");
-  if (cells.length !== 12) return; // 4x3 보드 셀 수 체크
+  if (!cells || cells.length !== 12) return;
 
   cells.forEach(cell => {
     const row = parseInt(cell.dataset.row);
     const col = parseInt(cell.dataset.col);
 
-    const rowData = boardState[row];
-    const ownerRow = ownerState[row];
-
-    const piece = (rowData && rowData[col]) || "";
-    const owner = (ownerRow && ownerRow[col]) || "";
+    const piece = (boardState[row] && boardState[row][col]) || "";
+    const owner = (ownerState[row] && ownerState[row][col]) || "";
 
     cell.textContent = piece;
     cell.className = "cell";
@@ -212,13 +206,13 @@ async function handleCellClick(e) {
   const col = parseInt(e.target.dataset.col);
   if (currentTurn !== mySlot) return;
 
-  const piece = boardState[row][col];
-  const owner = ownerState[row][col];
+  const piece = (boardState[row] && boardState[row][col]) || "";
+  const owner = (ownerState[row] && ownerState[row][col]) || "";
 
   if (selectedCell) {
     const fromRow = parseInt(selectedCell.dataset.row);
     const fromCol = parseInt(selectedCell.dataset.col);
-    const movingPiece = boardState[fromRow][fromCol];
+    const movingPiece = (boardState[fromRow] && boardState[fromRow][fromCol]) || "";
 
     if (owner === mySlot) return;
 
@@ -251,13 +245,14 @@ async function handleCellClick(e) {
 }
 
 async function checkWinCondition() {
+  if (!boardState || boardState.length !== 4) return;
   let upperKing = false;
   let lowerKing = false;
 
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 3; c++) {
-      const piece = boardState[r][c];
-      const owner = ownerState[r][c];
+      const piece = (boardState[r] && boardState[r][c]) || "";
+      const owner = (ownerState[r] && ownerState[r][c]) || "";
 
       if (piece === "왕") {
         if (owner === "player1") upperKing = true;
