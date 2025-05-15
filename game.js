@@ -175,25 +175,26 @@ function watchKingStatus() {
 }
 
 function updateBoardDisplay() {
-  if (!boardState || !ownerState) return;
-  if (!Array.isArray(boardState) || boardState.length !== 4 || boardState[0].length !== 3) return;
+  if (!Array.isArray(boardState) || !Array.isArray(ownerState)) return;
 
   const cells = document.querySelectorAll(".cell");
   cells.forEach(cell => {
     const row = parseInt(cell.dataset.row);
     const col = parseInt(cell.dataset.col);
-    const piece = boardState[row][col];
-    const owner = ownerState[row][col];
 
-    cell.textContent = piece || "";
+    const piece = (boardState[row] || [])[col] || "";
+    const owner = (ownerState[row] || [])[col] || "";
+
+    cell.textContent = piece;
     cell.className = "cell";
     if (owner === mySlot) cell.classList.add("lower");
     else if (owner === opponentSlot) cell.classList.add("upper");
   });
 }
 
-
 function updateCapturedUI() {
+  if (!capturedState || typeof capturedState !== "object") return;
+
   const mine = capturedState[mySlot] || [];
   const opp = capturedState[opponentSlot] || [];
 
