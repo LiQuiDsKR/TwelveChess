@@ -178,12 +178,17 @@ function updateBoardDisplay() {
   if (!Array.isArray(boardState) || !Array.isArray(ownerState)) return;
 
   const cells = document.querySelectorAll(".cell");
+  if (cells.length !== 12) return; // 4x3 보드 셀 수 체크
+
   cells.forEach(cell => {
     const row = parseInt(cell.dataset.row);
     const col = parseInt(cell.dataset.col);
 
-    const piece = (boardState[row] || [])[col] || "";
-    const owner = (ownerState[row] || [])[col] || "";
+    const rowData = boardState[row];
+    const ownerRow = ownerState[row];
+
+    const piece = (rowData && rowData[col]) || "";
+    const owner = (ownerRow && ownerRow[col]) || "";
 
     cell.textContent = piece;
     cell.className = "cell";
@@ -195,8 +200,8 @@ function updateBoardDisplay() {
 function updateCapturedUI() {
   if (!capturedState || typeof capturedState !== "object") return;
 
-  const mine = capturedState[mySlot] || [];
-  const opp = capturedState[opponentSlot] || [];
+  const mine = Array.isArray(capturedState[mySlot]) ? capturedState[mySlot] : [];
+  const opp = Array.isArray(capturedState[opponentSlot]) ? capturedState[opponentSlot] : [];
 
   myCapturedEl.innerHTML = mine.map(p => `<div class="captured-piece">${p}</div>`).join("");
   opponentCapturedEl.innerHTML = opp.map(p => `<div class="captured-piece">${p}</div>`).join("");
