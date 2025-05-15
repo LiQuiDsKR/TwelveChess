@@ -95,14 +95,13 @@ async function initializeGame() {
     await remove(kingStatusRef);
   }
 
-  renderBoard();
-
-  waitForReadyData().then(() => {
+  renderBoard(); // HTML 셀 생성
+    waitForReadyData().then(() => {
     watchTurn();
-    watchBoard();
-    watchCaptured();
+    watchBoard();     // boardState 설정 후 update 호출됨
+    watchCaptured();  // capturedState 설정 후 update 호출됨
     watchKingStatus();
-  });
+    });
 }
 
 function waitForReadyData() {
@@ -181,8 +180,11 @@ function updateBoardDisplay() {
     const row = parseInt(cell.dataset.row);
     const col = parseInt(cell.dataset.col);
 
-    const piece = (boardState[row] && boardState[row][col]) || "";
-    const owner = (ownerState[row] && ownerState[row][col]) || "";
+    const rowData = Array.isArray(boardState[row]) ? boardState[row] : [];
+    const ownerRow = Array.isArray(ownerState[row]) ? ownerState[row] : [];
+
+    const piece = rowData[col] || "";
+    const owner = ownerRow[col] || "";
 
     cell.textContent = piece;
     cell.className = "cell";
@@ -192,7 +194,9 @@ function updateBoardDisplay() {
 }
 
 function updateCapturedUI() {
-  if (!capturedState || typeof capturedState !== "object") return;
+  if (!capturedState || typeof capturedState !== "object") {
+    return;
+  }
 
   const mine = Array.isArray(capturedState[mySlot]) ? capturedState[mySlot] : [];
   const opp = Array.isArray(capturedState[opponentSlot]) ? capturedState[opponentSlot] : [];
