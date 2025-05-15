@@ -71,10 +71,10 @@ function listenForOpponent() {
 }
 
 const initialBoard = [
-  ["相", "王", "張"],
+  ["相", "王", "將"],
   ["",   "子", ""],
   ["",   "子", ""],
-  ["張", "王", "相"]
+  ["將", "王", "相"]
 ];
 
 const initialOwners = [
@@ -205,7 +205,39 @@ function updateCapturedUI() {
   opponentCapturedEl.innerHTML = opp.map(p => `<div class="captured-piece">${p}</div>`).join("");
 }
 
-async function handleCellClick(e) {
+function isValidMove(piece, fromRow, fromCol, toRow, toCol, slot) {
+  const dr = toRow - fromRow;
+  const dc = toCol - fromCol;
+  const absDr = Math.abs(dr);
+  const absDc = Math.abs(dc);
+
+  const isUpper = slot === "player1";
+  const forward = isUpper ? 1 : -1;
+
+  switch (piece) {
+    case "相":
+      return absDr === 1 && absDc === 1;
+
+    case "將":
+      return (absDr === 1 && dc === 0) || (absDc === 1 && dr === 0);
+
+    case "王":
+      return absDr <= 1 && absDc <= 1 && !(dr === 0 && dc === 0);
+
+    case "子":
+      return dr === forward && dc === 0;
+
+    case "侯":
+      return !(dr === forward && Math.abs(dc) === 1); // ↙ ↘ 제외한 7방향
+      // 즉, 전방, 좌우, 뒤쪽 포함 7방향 가능
+      // 侯는 왼아/오아 불가능
+  }
+
+  return false;
+}
+
+
+function handleCellClick(e) {
   const row = parseInt(e.target.dataset.row);
   const col = parseInt(e.target.dataset.col);
   if (currentTurn !== mySlot) return;
@@ -213,39 +245,66 @@ async function handleCellClick(e) {
   const piece = (boardState[row] && boardState[row][col]) || "";
   const owner = (ownerState[row] && ownerState[row][col]) || "";
 
-  if (selectedCell) {
-    const fromRow = parseInt(selectedCell.dataset.row);
-    const fromCol = parseInt(selectedCell.dataset.col);
-    const movingPiece = (boardState[fromRow] && boardState[fromRow][fromCol]) || "";
-
-    if (owner === mySlot) return;
-
-    const isUpper = mySlot === "player1";
-    const isAtEnd = (isUpper && row === 3) || (!isUpper && row === 0);
-
-    boardState[row][col] = (movingPiece === "子" && isAtEnd) ? "候" : movingPiece;
-    ownerState[row][col] = mySlot;
-    boardState[fromRow][fromCol] = "";
-    ownerState[fromRow][fromCol] = "";
-
-    if (piece !== "") {
-      capturedState[mySlot].push(piece);
-      await update(capturedRef, { [mySlot]: capturedState[mySlot] });
-    }
-
-    await set(boardRef, boardState);
-    await set(ownersRef, ownerState);
-    await set(turnRef, opponentSlot);
-    await checkWinCondition();
-
+  // 셀 선택 해제
+  if (selectedCell && selectedCell === e.target) {
     selectedCell.classList.remove("selected");
     selectedCell = null;
-  } else {
+    return;
+  }
+
+  // 선택 중이 아닐 때 (기물 선택)
+  if (!selectedCell) {
     if (piece && owner === mySlot) {
       selectedCell = e.target;
-      e.target.classList.add("selected");
+      selectedCell.classList.add("selected");
     }
+    return;
   }
+
+  // 이미 선택된 기물이 있을 때 (이동 시도)
+  const fromRow = parseInt(selectedCell.dataset.row);
+  const fromCol = parseInt(selectedCell.dataset.col);
+  const movingPiece = boardState[fromRow][fromCol];
+  const movingOwner = ownerState[fromRow][fromCol];
+
+  // 이동 유효성 체크
+  if (!isValidMove(movingPiece, fromRow, fromCol, row, col, mySlot)) {
+    selectedCell.classList.remove("selected");
+    selectedCell = null;
+    return;
+  }
+
+  // 내 기물이 있으면 취소
+  if (owner === mySlot) {
+    selectedCell.classList.remove("selected");
+    selectedCell = null;
+    return;
+  }
+
+  // 승급 처리 (子 → 侯)
+  const isUpper = mySlot === "player1";
+  const isAtEnd = (isUpper && row === 3) || (!isUpper && row === 0);
+  const placedPiece = (movingPiece === "子" && isAtEnd) ? "侯" : movingPiece;
+
+  // 캡처 처리
+  if (piece !== "" && owner === opponentSlot) {
+    capturedState[mySlot].push(piece);
+    update(capturedRef, { [mySlot]: capturedState[mySlot] });
+  }
+
+  // 이동 처리
+  boardState[row][col] = placedPiece;
+  ownerState[row][col] = mySlot;
+  boardState[fromRow][fromCol] = "";
+  ownerState[fromRow][fromCol] = "";
+
+  set(boardRef, boardState);
+  set(ownersRef, ownerState);
+  set(turnRef, opponentSlot);
+  checkWinCondition();
+
+  selectedCell.classList.remove("selected");
+  selectedCell = null;
 }
 
 async function checkWinCondition() {
