@@ -85,7 +85,8 @@ const initialOwners = [
 async function initializeGame() {
   const boardSnap = await get(boardRef);
 
-  if (!boardSnap.exists()) {
+  // 오직 player1만 초기화
+  if (!boardSnap.exists() && mySlot === "player1") {
     await set(boardRef, initialBoard);
     await set(ownersRef, initialOwners);
     await set(turnRef, "player1");
@@ -93,6 +94,7 @@ async function initializeGame() {
       player1: [],
       player2: []
     });
+    await remove(kingStatusRef);
   }
 
   renderBoard();
@@ -101,6 +103,7 @@ async function initializeGame() {
   watchCaptured();
   watchKingStatus();
 }
+
 
 function renderBoard() {
   boardElement.innerHTML = "";
