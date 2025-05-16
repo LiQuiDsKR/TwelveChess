@@ -153,10 +153,15 @@ function watchBoard() {
 
 function watchCaptured() {
   onValue(capturedRef, (snap) => {
-    capturedState = snap.val();
+    const data = snap.val();
+    capturedState = {
+      player1: Array.isArray(data?.player1) ? data.player1 : [],
+      player2: Array.isArray(data?.player2) ? data.player2 : []
+    };
     updateCapturedUI();
   });
 }
+
 
 function watchKingStatus() {
   onValue(kingStatusRef, async (snap) => {
@@ -227,6 +232,7 @@ async function handleCellClick(e) {
     ownerState[fromRow][fromCol] = "";
 
     if (piece !== "") {
+      if (!capturedState[mySlot]) capturedState[mySlot] = [];
       capturedState[mySlot].push(piece);
       await update(capturedRef, { [mySlot]: capturedState[mySlot] });
     }
