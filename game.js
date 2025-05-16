@@ -71,10 +71,10 @@ function listenForOpponent() {
 }
 
 const initialBoard = [
-  ["相", "王", "張"],
+  ["相", "王", "將"],
   ["",   "子", ""],
   ["",   "子", ""],
-  ["張", "王", "相"]
+  ["將", "王", "相"]
 ];
 
 const initialOwners = [
@@ -153,15 +153,10 @@ function watchBoard() {
 
 function watchCaptured() {
   onValue(capturedRef, (snap) => {
-    const data = snap.val();
-    capturedState = {
-      player1: Array.isArray(data?.player1) ? data.player1 : [],
-      player2: Array.isArray(data?.player2) ? data.player2 : []
-    };
+    capturedState = snap.val();
     updateCapturedUI();
   });
 }
-
 
 function watchKingStatus() {
   onValue(kingStatusRef, async (snap) => {
@@ -210,48 +205,106 @@ function updateCapturedUI() {
   opponentCapturedEl.innerHTML = opp.map(p => `<div class="captured-piece">${p}</div>`).join("");
 }
 
+function isValidMove(piece, fromRow, fromCol, toRow, toCol, slot) {
+  const dr = toRow - fromRow;
+  const dc = toCol - fromCol;
+  const absDr = Math.abs(dr);
+  const absDc = Math.abs(dc);
+
+  const isUpper = slot === "player1";
+  const forward = isUpper ? 1 : -1;
+
+  switch (piece) {
+    case "相":
+      return absDr === 1 && absDc === 1;
+
+    case "將":
+      return (absDr === 1 && dc === 0) || (absDc === 1 && dr === 0);
+
+    case "王":
+      return absDr <= 1 && absDc <= 1 && !(dr === 0 && dc === 0);
+
+    case "子":
+      return dr === forward && dc === 0;
+
+    case "侯":
+      return !(dr === forward && Math.abs(dc) === 1); // ↙ ↘ 제외한 7방향
+      // 즉, 전방, 좌우, 뒤쪽 포함 7방향 가능
+      // 侯는 왼아/오아 불가능
+  }
+
+  return false;
+}
+
+
 async function handleCellClick(e) {
   const row = parseInt(e.target.dataset.row);
   const col = parseInt(e.target.dataset.col);
   if (currentTurn !== mySlot) return;
 
-  const piece = (boardState[row] && boardState[row][col]) || "";
-  const owner = (ownerState[row] && ownerState[row][col]) || "";
+  const targetPiece = (boardState[row] && boardState[row][col]) || "";
+  const targetOwner = (ownerState[row] && ownerState[row][col]) || "";
 
-  if (selectedCell) {
-    const fromRow = parseInt(selectedCell.dataset.row);
-    const fromCol = parseInt(selectedCell.dataset.col);
-    const movingPiece = (boardState[fromRow] && boardState[fromRow][fromCol]) || "";
-
-    const isUpper = mySlot === "player1";
-    const isAtEnd = (isUpper && row === 3) || (!isUpper && row === 0);
-
-    boardState[row][col] = (movingPiece === "子" && isAtEnd) ? "候" : movingPiece;
-    ownerState[row][col] = mySlot;
-    boardState[fromRow][fromCol] = "";
-    ownerState[fromRow][fromCol] = "";
-
-    if (piece !== "") {
-      if (!capturedState[mySlot]) capturedState[mySlot] = [];
-      capturedState[mySlot].push(piece);
-      await update(capturedRef, { [mySlot]: capturedState[mySlot] });
-    }
-
-    await set(boardRef, boardState);
-    await set(ownersRef, ownerState);
-    await set(turnRef, opponentSlot);
-    await checkWinCondition();
-
+  // 선택 해제
+  if (selectedCell && selectedCell === e.target) {
     selectedCell.classList.remove("selected");
     selectedCell = null;
-  } else {
-    if (piece && owner === mySlot) {
-      selectedCell = e.target;
-      e.target.classList.add("selected");
-    }
+    return;
   }
-}
 
+  // 기물 선택
+  if (!selectedCell) {
+    if (targetPiece && targetOwner === mySlot) {
+      selectedCell = e.target;
+      selectedCell.classList.add("selected");
+    }
+    return;
+  }
+
+  // 기물 이동 시도
+  const fromRow = parseInt(selectedCell.dataset.row);
+  const fromCol = parseInt(selectedCell.dataset.col);
+  const movingPiece = boardState[fromRow][fromCol];
+
+  const isValid = isValidMove(movingPiece, fromRow, fromCol, row, col, mySlot);
+  if (!isValid) {
+    selectedCell.classList.remove("selected");
+    selectedCell = null;
+    return;
+  }
+
+  // 내 기물 자리에 이동 불가
+  if (targetOwner === mySlot) {
+    selectedCell.classList.remove("selected");
+    selectedCell = null;
+    return;
+  }
+
+  // 승급 (子 → 侯)
+  const isUpper = mySlot === "player1";
+  const isAtEnd = (isUpper && row === 3) || (!isUpper && row === 0);
+  const placedPiece = (movingPiece === "子" && isAtEnd) ? "侯" : movingPiece;
+
+  // 캡처 처리 (상대 기물일 경우만)
+  if (targetPiece !== "" && targetOwner === opponentSlot) {
+    capturedState[mySlot].push(targetPiece);
+    await update(capturedRef, { [mySlot]: capturedState[mySlot] });
+  }
+
+  // 보드 상태 갱신
+  boardState[row][col] = placedPiece;
+  ownerState[row][col] = mySlot;
+  boardState[fromRow][fromCol] = "";
+  ownerState[fromRow][fromCol] = "";
+
+  await set(boardRef, boardState);
+  await set(ownersRef, ownerState);
+  await set(turnRef, opponentSlot);
+  await checkWinCondition();
+
+  selectedCell.classList.remove("selected");
+  selectedCell = null;
+}
 
 async function checkWinCondition() {
   if (!boardState || boardState.length !== 4) return;
