@@ -218,8 +218,6 @@ async function handleCellClick(e) {
     const fromCol = parseInt(selectedCell.dataset.col);
     const movingPiece = (boardState[fromRow] && boardState[fromRow][fromCol]) || "";
 
-    if (owner === mySlot) return;
-
     const isUpper = mySlot === "player1";
     const isAtEnd = (isUpper && row === 3) || (!isUpper && row === 0);
 
@@ -247,6 +245,7 @@ async function handleCellClick(e) {
     }
   }
 }
+
 
 async function checkWinCondition() {
   if (!boardState || boardState.length !== 4) return;
