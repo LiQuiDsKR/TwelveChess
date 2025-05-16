@@ -97,10 +97,13 @@ async function initializeGame() {
 
   renderBoard(); // HTML 셀 생성
     waitForReadyData().then(() => {
-    watchTurn();
-    watchBoard();     // boardState 설정 후 update 호출됨
-    watchCaptured();  // capturedState 설정 후 update 호출됨
-    watchKingStatus();
+      if (!capturedState.player1) capturedState.player1 = [];
+      if (!capturedState.player2) capturedState.player2 = [];
+
+      watchTurn();
+      watchBoard();     // boardState 설정 후 update 호출됨
+      watchCaptured();  // capturedState 설정 후 update 호출됨
+      watchKingStatus();
     });
 }
 
@@ -287,6 +290,9 @@ async function handleCellClick(e) {
 
   // 캡처 처리 (상대 기물일 경우만)
   if (targetPiece !== "" && targetOwner === opponentSlot) {
+    if (!Array.isArray(capturedState[mySlot])) {
+      capturedState[mySlot] = [];
+    }
     capturedState[mySlot].push(targetPiece);
     await update(capturedRef, { [mySlot]: capturedState[mySlot] });
   }
